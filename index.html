@@ -23,7 +23,8 @@
 		window.castReceiverManager = cast.receiver.CastReceiverManager.getInstance();
 		var customMessageBus = castReceiverManager.getCastMessageBus('urn:x-cast:se.mowday.cast.quiz');
 		customMessageBus.onMessage = function(event) {
-			console.log("Received message", event);
+			log("Received message", event);
+			customMessageBus.send({type:'RESPONDING'});
 		};
 		window.castReceiverManager.start();
 
@@ -41,6 +42,9 @@
 		box.drawRect(0, 0, 200, 200);
 		stage.addChild(box);
 
+		var text = new PIXI.Text('Ready', { fill: 0xFF00FF, font : '12px Arial' });
+		stage.addChild(text);
+
 		function animate() {
 			box.rotation += 0.001;
 			box.pivot = new PIXI.Point(100, 100);
@@ -50,6 +54,18 @@
 			window.requestAnimationFrame(animate);
 		}
 		animate();
+
+		function log() {
+			var a = [];
+			a.push.apply(a, arguments);
+			var s = '';
+			a.map(function(value) { s += value.toString() + ', '; });
+			s = s.substring(0, s.length - 2);
+			text.text = s + '\n' + text.text;
+			console.log(s)
+		}
+
+		log('Awaiting log!');
 	</script>
 </body>
 </html>
