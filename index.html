@@ -7,8 +7,8 @@
 		html, body {
 			width: 100%;
 			height: 100%;
-			margin: 0px;
-			padding: 0px;
+			margin: 10px;
+			padding: 10px;
 			overflow: hidden;
 		}
 	</style>
@@ -19,14 +19,61 @@
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.18.0/TweenMax.min.js"></script>
 
 	<script>
+		cast.receiver.logger.setLevelValue(cast.receiver.LoggerLevel.DEBUG);
+		function loadFile(file, filetype){
+			filetype = filetype || file.substring(file.lastIndexOf('.') + 1);
+
+		    if (filetype=="js"){
+		        var fileref=document.createElement('script')
+		        fileref.setAttribute("type","text/javascript")
+		        fileref.setAttribute("src", file)
+		        log('Loading file from: ' + file);
+		    }
+		    else if (filetype=="css"){
+		        var fileref=document.createElement("link")
+		        fileref.setAttribute("rel", "stylesheet")
+		        fileref.setAttribute("type", "text/css")
+		        fileref.setAttribute("href", file)
+		    }
+		    else
+		    {
+		    	return;
+		    }
+
+		    document.body.appendChild(fileref);
+		 }
 
 		window.castReceiverManager = cast.receiver.CastReceiverManager.getInstance();
 		var customMessageBus = castReceiverManager.getCastMessageBus('urn:x-cast:se.mowday.cast.quiz');
 		customMessageBus.onMessage = function(event) {
-			log("Received message", event);
-			customMessageBus.send({type:'RESPONDING'});
+			switch(event.type) {
+				case 'message':
+					handleMessage(JSON.parse(event.data), event);
+					break;
+			}
+			log("Received message", JSON.stringify(event));
 		};
+
+		function handleMessage(message, event) {
+			//log('Handling:', JSON.stringify(message));
+			log('Type:', message.type);
+			switch(message.type) {
+				case "LOAD":
+					loadFile(message.file);
+					break;
+
+				default:
+					log('Cannot handle type', message.type);
+					break;
+			}
+		}
 		window.castReceiverManager.start();
+
+		window.onerror = function myErrorHandler(errorMsg, url, lineNumber) {
+			lineNumber = lineNumber || 'N/A';
+		    log("Error occured (line "+lineNumber+"): " + errorMsg);//or any message
+		    return false;
+		}
 
 	</script>
 	<script>
@@ -37,19 +84,21 @@
 		document.body.appendChild(renderer.view);
 
 		var stage = new PIXI.Container();
-		var box   = new PIXI.Graphics();
-		box.beginFill(0xFF00FF);
-		box.drawRect(0, 0, 200, 200);
-		stage.addChild(box);
 
 		var text = new PIXI.Text('Ready', { fill: 0xFF00FF, font : '12px Arial' });
 		stage.addChild(text);
 
+		var frameFunctions = [];
+		function onEnterFrame(callback) {
+			frameFunctions.push(callback);
+		}
+
 		function animate() {
-			box.rotation += 0.001;
-			box.pivot = new PIXI.Point(100, 100);
-			box.x = width / 2;
-			box.y = height / 2;
+
+			for (var i = frameFunctions.length - 1; i >= 0; i--) {
+				frameFunctions[i]();
+			};
+
 			renderer.render(stage);
 			window.requestAnimationFrame(animate);
 		}
@@ -59,7 +108,13 @@
 			var a = [];
 			a.push.apply(a, arguments);
 			var s = '';
-			a.map(function(value) { s += value.toString() + ', '; });
+			a.map(function(value) {
+				if(value === undefined) {
+					s += 'undefined, ';
+				} else {
+					s += value.toString() + ', ';
+				}
+			});
 			s = s.substring(0, s.length - 2);
 			text.text = s + '\n' + text.text;
 			console.log(s)
